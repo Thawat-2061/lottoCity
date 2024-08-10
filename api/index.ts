@@ -1,8 +1,11 @@
-// const express = require("express");
-// const app = express();
+import mysql from 'mysql';
+import { conn } from "../dbconn";
 
-// app.get("/", (req, res) => res.send("Express on Vercel"));
+const express = require("express");
+const app = express();
 
-// app.listen(3000, () => console.log("Server ready on port 3000."));
+app.get("/", (req: any, res: { send: (arg0: string) => any; }) => res.send("Hello World"));
 
-// // module.exports = app;
+app.listen(3000, () => console.log("Server ready on port 3000."));
+
+module.exports = app;
