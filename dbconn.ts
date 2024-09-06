@@ -1,17 +1,9 @@
 import mysql from "mysql";
 
 export const conn = mysql.createPool({
-  // connectionLimit: 10,
-  // host: "localhost",
-  // user: "demo",
-  // password: "abc123",
-  // database: "test",
   connectionLimit: 10,
-  host: "sql6.freemysqlhosting.net",
-  user: "sql6689406",
-  password: "EdBJJznbuZ",
-  database: "sql6689406",
-
+  host: "202.28.34.197", // เปลี่ยนให้เหลือเฉพาะ IP Address
+  user: "web66_65011212061",
+  password: "65011212061@csmsu",
+  database: "web66_65011212061",
 });
-
-
