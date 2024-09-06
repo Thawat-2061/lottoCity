@@ -4,6 +4,7 @@ import bodyParser from "body-parser";
 import { router as movie } from "./api/movies";
 import { router as  stars} from "./api/stars";
 import { router as creators } from "./api/creators";
+import { router as login } from "./api/login";
 
 export const app = express();
 
@@ -18,7 +19,7 @@ app.use("/movie",movie);
 app.use("/stars",stars);
 app.use("/creators",creators);
 
-
+app.use("/login",login);
 
 
 
