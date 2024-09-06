@@ -1,10 +1,18 @@
-import http from "http";
-import { app } from "./app";
+import http from 'http';
+import express from 'express';
 
-const port = process.env.port || 3000;
+const app = express();
+
+// Middleware และ routing ของคุณที่นี่
+app.use(express.json());
+
+app.get('/', (req, res) => {
+  res.send('Hello, world!');
+});
+
+const port = process.env.PORT || 3000;
 const server = http.createServer(app);
 
-server.listen(port,()=>{
-    console.log("Hello Lotto777");
-    
+server.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
