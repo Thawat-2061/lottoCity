@@ -7,10 +7,10 @@ export const conn = mysql.createPool({
   // password: "abc123",
   // database: "test",
   connectionLimit: 10,
-  host: "sql6.freemysqlhosting.net",
-  user: "sql6689406",
-  password: "EdBJJznbuZ",
-  database: "sql6689406",
+  host: "202.28.34.197",
+  user: "web66_65011212061",
+  password: "65011212061@csmsu",
+  database: "web66_65011212061",
 
 });
 
