@@ -12,7 +12,7 @@ export const router = express.Router();
 
 
 router.get("/",(req,res)=>{
-    res.json("TESTSTTS");
+    res.send('1234567890');
 });
 
 //add
