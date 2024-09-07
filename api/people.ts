@@ -12,14 +12,7 @@ export const router = express.Router();
 
 
 router.get("/",(req,res)=>{
-    let sql = "select * from people"
-    conn.query(sql,(err,result)=>{
-        if(err){
-            res.status(400).json(err);
-        }else{
-            res.json(result);
-        }
-    });
+    res.json("TESTSTTS");
 });
 
 //add
