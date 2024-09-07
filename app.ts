@@ -9,10 +9,14 @@ import { router as login } from "./api/login";
 export const app = express();
 
 
+
 const cors = require('cors');
 app.use(cors());
 app.use(bodyParser.text());
 app.use(bodyParser.json());
+app.use("/",(req,res)=>{
+    res.send("Hello World!")
+});
 
 app.use("/people",people);
 app.use("/movie",movie);
@@ -23,9 +27,7 @@ app.use("/login",login);
 
 
 
-app.use("/",(req,res)=>{
-    res.send("Hello World!")
-});
+
 
 
 
