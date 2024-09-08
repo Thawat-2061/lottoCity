@@ -4,6 +4,11 @@ import { conn } from '../dbconn'; // ตรวจสอบให้แน่ใ�
 
 export const router = express.Router();
 
+// ใช้ bcryptjs แทน bcrypt
+import bcrypt from 'bcryptjs';
+
+const saltRounds = 10;
+
 router.get("/:input", (req, res) => {
   const input = req.params.input; // พารามิเตอร์ input จะเป็นได้ทั้ง email หรือ username
 
@@ -18,9 +23,6 @@ router.get("/:input", (req, res) => {
     }
   });
 });
-
-const bcrypt = require('bcrypt');
-const saltRounds = 10;
 
 router.post("/", async (req, res) => {
   let User = req.body;
@@ -64,7 +66,6 @@ router.post("/", async (req, res) => {
     res.status(500).json({ error: "Server error." });
   }
 });
-
 
 router.put("/:member_id", async (req, res) => {
   try {
@@ -135,5 +136,4 @@ router.delete("/:member_id", (req, res) => {
       res.status(200).json({ message: "Member deleted successfully" });
     }
   });
-})
-
+});
