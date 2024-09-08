@@ -1,7 +1,7 @@
 import http from 'http';
 import express from 'express';
+import { app } from './app';
 
-const app = express();
 
 // Middleware และ routing ของคุณที่นี่
 app.use(express.json());
