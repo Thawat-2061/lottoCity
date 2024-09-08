@@ -25,17 +25,4 @@ app.use("/", (req, res) => {
   res.send("Hello World!");
 });
 
-router.get("/:input", (req, res) => {
-  const input = req.params.input; // พารามิเตอร์ input จะเป็นได้ทั้ง email หรือ username
 
-  // ปรับ SQL ให้รองรับทั้ง email และ username
-  let sql = "SELECT * FROM members WHERE email = ? OR username = ?";
-
-  conn.query(sql, [input, input], (err, result) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-    } else {
-      res.json(result);
-    }
-  });
-});
