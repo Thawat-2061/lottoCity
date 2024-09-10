@@ -4,7 +4,7 @@ import { conn } from '../dbconn'; // ควรตรวจสอบว่าม�
 
 export const router = express.Router();
 
-router.get('/:member_id', async (req, res) => {
+router.get('/getID/:member_id', async (req, res) => {
     try {
       // ดึง member_id จาก URL parameters
       const memberId = req.params.member_id;
