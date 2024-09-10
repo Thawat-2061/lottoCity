@@ -4,6 +4,7 @@ import { conn } from '../dbconn'; // ควรตรวจสอบว่าม�
 
 export const router = express.Router();
 
+// ดึงข้อมูล หวย จาก ID ที่ส่งมา
 router.get('/getID/:member_id', async (req, res) => {
     try {
       // ดึง member_id จาก URL parameters
@@ -32,6 +33,8 @@ router.get('/getID/:member_id', async (req, res) => {
     }
   });
 
+
+// สร้าง หวย 100 ใบ แบบสุ่มเลขไม่ซ้ำ ลงใน DB
 router.get('/insertLotto', async (req, res) => {
     try {
       const values = new Set();
@@ -59,6 +62,8 @@ router.get('/insertLotto', async (req, res) => {
       res.status(500).json({ error: 'An unexpected error occurred: ' + errorMessage }); // จัดการข้อผิดพลาดที่ไม่คาดคิด
     }
   });
+
+  // ดึงข้อมูล หวย ที่ยังไม่ได้ถูกซื้อ คือ ไม่มี id คนซื้อติดอยู่ มาแสดงหน้าหลัก
   router.get('/showforsellLotto', async (req, res) => {
     try {
       const sql = "SELECT * FROM lottonumbers WHERE member_id IS NULL"; // ใช้คำสั่ง SQL เพื่อเลือกข้อมูลที่ member_id เป็น NULL
@@ -76,6 +81,40 @@ router.get('/insertLotto', async (req, res) => {
     }
   });
 
+  // update หวย เมื่อถูกซื้อ โดยเอา id ของ User มาใส่ใน หวย
+  router.put('/updateLottoMember', async (req, res) => {
+    try {
+      // รับ lotto_number_id และ member_id จาก body ของคำขอ
+      const { lotto_number_id, member_id } = req.body;
+  
+      // ตรวจสอบว่าได้รับข้อมูลทั้งสองตัวแปรหรือไม่
+      if (!lotto_number_id || !member_id) {
+        return res.status(400).json({ error: 'Both lotto_number_id and member_id are required' });
+      }
+  
+      // สร้างคำสั่ง SQL เพื่ออัพเดท member_id โดยใช้ lotto_number_id
+      const sql = "UPDATE lottonumbers SET member_id = ? WHERE lotto_number_id = ?";
+  
+      // ใช้ Promise เพื่อทำให้โค้ดอ่านง่ายขึ้น
+      conn.query(sql, [member_id, lotto_number_id], (err, result) => {
+        if (err) {
+          return res.status(500).json({ error: err.message }); // จัดการข้อผิดพลาดในการเชื่อมต่อหรือคำสั่ง SQL
+        }
+  
+        // ตรวจสอบว่ามีการอัพเดทข้อมูลหรือไม่
+        if (result.affectedRows === 0) {
+          return res.status(404).json({ message: 'No records found for the given lotto_number_id' }); // ไม่มีข้อมูลที่ตรงกับ lotto_number_id
+        }
+  
+        res.status(200).json({ message: 'Member ID updated successfully for the given lotto_number_id' }); // ส่งผลลัพธ์เมื่อสำเร็จ
+      });
+    } catch (error) {
+      const errorMessage = (error as Error).message; // แปลงประเภท error เป็น Error เพื่อดึง message ออกมา
+      res.status(500).json({ error: 'An unexpected error occurred: ' + errorMessage }); // จัดการข้อผิดพลาดที่ไม่คาดคิด
+    }
+  });
+  
+  
 export default router; // แก้ไขการส่งออกให้เป็น ES6 module
 
 

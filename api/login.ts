@@ -1,14 +1,14 @@
 import express from 'express';
 import mysql from 'mysql';
 import { conn } from '../dbconn'; // ตรวจสอบให้แน่ใจว่าไฟล์นี้มีการเชื่อมต่อฐานข้อมูลอย่างถูกต้อง
+import bcrypt from 'bcryptjs';
 
 export const router = express.Router();
 
-// ใช้ bcryptjs แทน bcrypt
-import bcrypt from 'bcryptjs';
 
 const saltRounds = 10;
 
+// รับ  username or email มา select หาใน DB
 router.get("/:input", (req, res) => {
   const input = req.params.input; // พารามิเตอร์ input จะเป็นได้ทั้ง email หรือ username
 
@@ -24,6 +24,7 @@ router.get("/:input", (req, res) => {
   });
 });
 
+// สมัคร User
 router.post("/", async (req, res) => {
   let User = req.body;
 
@@ -67,6 +68,7 @@ router.post("/", async (req, res) => {
   }
 });
 
+//แก้ไขข้อมูลผู้ใช้
 router.put("/:member_id", async (req, res) => {
   try {
     const member_id = req.params.member_id; // รับค่าจาก URL parameter
@@ -121,7 +123,55 @@ router.put("/:member_id", async (req, res) => {
   }
 });
 
-router.delete("/:member_id", (req, res) => {
+// เติมเงิน
+router.put("/wallet/:member_id", async (req, res) => {
+  try {
+    const member_id = req.params.member_id; // รับค่าจาก URL parameter
+    const { wallet_balance } = req.body; // รับข้อมูล wallet_balance ที่จะเพิ่มจาก request body
+
+    // ตรวจสอบข้อมูลก่อนการอัพเดต
+    if (wallet_balance === undefined || wallet_balance === null || isNaN(wallet_balance)) {
+      return res.status(400).json({ message: "Invalid wallet balance provided." });
+    }
+
+    // สร้างคำสั่ง SQL เพื่อเพิ่มค่า wallet_balance ที่รับมา ไปยังค่าเดิมในฐานข้อมูล
+    let sql = "UPDATE members SET wallet_balance = wallet_balance + ? WHERE member_id = ?";
+
+    sql = mysql.format(sql, [wallet_balance, member_id]);
+
+    // ทำการอัพเดตข้อมูลในฐานข้อมูล
+    conn.query(sql, (err, result) => {
+      if (err) {
+        console.error("Error executing query:", err.message);
+        return res
+          .status(500)
+          .json({ message: "Database error", error: err.message });
+      }
+
+      // ตรวจสอบว่ามีการอัพเดตข้อมูลกี่แถว
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Member not found." });
+      }
+
+      // ส่งสถานะตอบกลับเมื่อการอัพเดตสำเร็จ
+      res.status(200).json({
+        message: "Wallet balance updated successfully",
+        affected_rows: result.affectedRows,
+      });
+    });
+  } catch (error) {
+    // ใช้ Type Assertion เพื่อระบุว่าประเภทของ error คือ Error
+    console.error("Error:", (error as Error).message);
+    res.status(500).json({
+      message: "Internal server error",
+      error: (error as Error).message,
+    });
+  }
+});
+
+
+// ลบ User จาก ID ที่ส่งมา
+router.delete("/deleteID/:member_id", (req, res) => {
   const member_id = req.params.member_id;
 
   let sql = "DELETE FROM members WHERE member_id = ?";
@@ -137,3 +187,19 @@ router.delete("/:member_id", (req, res) => {
     }
   });
 });
+
+// ส่วนของ Admin ลบ User ทั้งหมด รีระบบ
+router.delete("/deleteAll", (req, res) => {
+  const sql = "DELETE FROM members WHERE type = 'user'";
+
+  conn.query(sql, (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Internal server error", error: err });
+    } else if (result.affectedRows === 0) {
+      res.status(404).json({ message: "No users found to delete" });
+    } else {
+      res.status(200).json({ message: "All users deleted successfully" });
+    }
+  });
+});
+
