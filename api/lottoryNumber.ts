@@ -81,36 +81,127 @@ router.get('/insertLotto', async (req, res) => {
     }
   });
 
-  // update หวย เมื่อถูกซื้อ โดยเอา id ของ User มาใส่ใน หวย
+  // update หวย เมื่อถูกซื้อ โดยเอา id ของ User มาใส่ใน หวย จ่ายเงินด้วย เงินถูกหัก ถ้าเงินไม่พอซื้อไม่ได้
   router.put('/updateLottoMember', async (req, res) => {
+    const { lotto_number_id, member_id, wallet_balance } = req.body;
+  
+    if (!lotto_number_id || !member_id || wallet_balance === undefined) {
+      return res.status(400).json({ error: 'lotto_number_id, member_id, and wallet_balance are required.' });
+    }
+  
     try {
-      // รับ lotto_number_id และ member_id จาก body ของคำขอ
-      const { lotto_number_id, member_id } = req.body;
-  
-      // ตรวจสอบว่าได้รับข้อมูลทั้งสองตัวแปรหรือไม่
-      if (!lotto_number_id || !member_id) {
-        return res.status(400).json({ error: 'Both lotto_number_id and member_id are required' });
-      }
-  
-      // สร้างคำสั่ง SQL เพื่ออัพเดท member_id โดยใช้ lotto_number_id
-      const sql = "UPDATE lottonumbers SET member_id = ? WHERE lotto_number_id = ?";
-  
-      // ใช้ Promise เพื่อทำให้โค้ดอ่านง่ายขึ้น
-      conn.query(sql, [member_id, lotto_number_id], (err, result) => {
+      // Get a connection from the pool
+      conn.getConnection((err, connection) => {
         if (err) {
-          return res.status(500).json({ error: err.message }); // จัดการข้อผิดพลาดในการเชื่อมต่อหรือคำสั่ง SQL
+          return res.status(500).json({ error: 'Failed to get a connection from the pool.' });
         }
   
-        // ตรวจสอบว่ามีการอัพเดทข้อมูลหรือไม่
-        if (result.affectedRows === 0) {
-          return res.status(404).json({ message: 'No records found for the given lotto_number_id' }); // ไม่มีข้อมูลที่ตรงกับ lotto_number_id
-        }
+        connection.beginTransaction(async (transactionErr) => {
+          if (transactionErr) {
+            connection.release();
+            return res.status(500).json({ error: 'Failed to start transaction.' });
+          }
   
-        res.status(200).json({ message: 'Member ID updated successfully for the given lotto_number_id' }); // ส่งผลลัพธ์เมื่อสำเร็จ
+          try {
+            // Get the amount from lottonumbers
+            connection.query("SELECT amount, member_id FROM lottonumbers WHERE lotto_number_id = ?", [lotto_number_id], (selectErr, rows) => {
+              if (selectErr) {
+                return connection.rollback(() => {
+                  connection.release();
+                  res.status(500).json({ error: 'Failed to query lottonumbers.' });
+                });
+              }
+  
+              if (rows.length === 0) {
+                return connection.rollback(() => {
+                  connection.release();
+                  res.status(404).json({ message: 'No records found for the given lotto_number_id' });
+                });
+              }
+  
+              const amount = rows[0].amount;
+              const currentMemberId = rows[0].member_id;
+  
+              // Check if wallet_balance is sufficient
+              if (wallet_balance < amount) {
+                return connection.rollback(() => {
+                  connection.release();
+                  res.status(400).json({ message: 'Insufficient balance' });
+                });
+              }
+  
+              // Ensure member_id is updated only if current member_id is NULL
+              if (currentMemberId !== null) {
+                return connection.rollback(() => {
+                  connection.release();
+                  res.status(400).json({ message: 'Cannot update: member_id is already set' });
+                });
+              }
+  
+              // Calculate the remaining balance
+              const remainingBalance = wallet_balance - amount;
+  
+              // Update the lottonumbers table only if member_id is NULL
+              connection.query("UPDATE lottonumbers SET member_id = ? WHERE lotto_number_id = ? AND member_id IS NULL", [member_id, lotto_number_id], (updateLottoErr, updateLottoResult) => {
+                if (updateLottoErr) {
+                  return connection.rollback(() => {
+                    connection.release();
+                    res.status(500).json({ error: 'Failed to update lottonumbers.' });
+                  });
+                }
+  
+                // Check if any rows were updated
+                if (updateLottoResult.affectedRows === 0) {
+                  return connection.rollback(() => {
+                    connection.release();
+                    res.status(400).json({ message: 'Update failed: member_id was not NULL' });
+                  });
+                }
+  
+                // Update the members table
+                connection.query("UPDATE members SET wallet_balance = ? WHERE member_id = ?", [remainingBalance, member_id], (updateMemberErr) => {
+                  if (updateMemberErr) {
+                    return connection.rollback(() => {
+                      connection.release();
+                      res.status(500).json({ error: 'Failed to update members.' });
+                    });
+                  }
+  
+                  // Commit transaction
+                  connection.commit((commitErr) => {
+                    if (commitErr) {
+                      return connection.rollback(() => {
+                        connection.release();
+                        res.status(500).json({ error: 'Failed to commit transaction.' });
+                      });
+                    }
+  
+                    connection.release();
+                    res.status(200).json({
+                      message: 'Member ID updated successfully for the given lotto_number_id and wallet balance updated.',
+                      remaining_balance: remainingBalance,
+                    });
+                  });
+                });
+              });
+            });
+          } catch (error) {
+            connection.rollback(() => {
+              connection.release();
+              const errorMessage = (error as Error).message;
+              res.status(500).json({
+                message: 'Internal server error',
+                error: errorMessage,
+              });
+            });
+          }
+        });
       });
     } catch (error) {
-      const errorMessage = (error as Error).message; // แปลงประเภท error เป็น Error เพื่อดึง message ออกมา
-      res.status(500).json({ error: 'An unexpected error occurred: ' + errorMessage }); // จัดการข้อผิดพลาดที่ไม่คาดคิด
+      res.status(500).json({
+        message: 'Internal server error',
+        error: (error as Error).message,
+      });
     }
   });
   
