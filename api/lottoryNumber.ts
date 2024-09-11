@@ -5,12 +5,14 @@ import { conn } from '../dbconn'; // ควรตรวจสอบว่าม�
 export const router = express.Router();
 
 // ดึงข้อมูล หวย จาก ID ที่ส่งมา
-router.get('/getID/:member_id', async (req, res) => {
+router.get('/getLottoUser', async (req, res) => {
     try {
       // ดึง member_id จาก URL parameters
-      const memberId = req.params.member_id;
+   
+      const {member_id } = req.body; 
+      
   
-      if (!memberId) {
+      if (!member_id) {
         return res.status(400).json({ error: 'Member ID is required' }); // ตรวจสอบว่ามีการส่ง member_id หรือไม่
       }
   
@@ -18,7 +20,7 @@ router.get('/getID/:member_id', async (req, res) => {
       const sql = "SELECT * FROM lottonumbers WHERE member_id = ?";
   
       // ใช้ Promise เพื่อทำให้โค้ดอ่านง่ายขึ้น
-      conn.query(sql, [memberId], (err, result) => {
+      conn.query(sql, [member_id], (err, result) => {
         if (err) {
           return res.status(500).json({ error: err.message }); // จัดการข้อผิดพลาดในการเชื่อมต่อหรือคำสั่ง SQL
         }
