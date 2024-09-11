@@ -9,7 +9,7 @@ export const router = express.Router();
 const saltRounds = 10;
 
 // รับ  username or email มา select หาใน DB
-router.get("/find", (req, res) => {
+router.post("/find", (req, res) => {
   // const input = req.params.input; // พารามิเตอร์ input จะเป็นได้ทั้ง email หรือ username
   const {input } = req.body; 
   // ปรับ SQL ให้รองรับทั้ง email และ username
