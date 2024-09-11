@@ -126,8 +126,7 @@ router.put("/editUser", async (req, res) => {
 // เติมเงิน
 router.put("/wallet", async (req, res) => {
   try {
-
-    const { member_id ,wallet_balance } = req.body; // รับข้อมูล wallet_balance ที่จะเพิ่มจาก request body
+    const { member_id, wallet_balance } = req.body; // รับข้อมูล wallet_balance ที่จะเพิ่มจาก request body
 
     // ตรวจสอบข้อมูลก่อนการอัพเดต
     if (wallet_balance === undefined || wallet_balance === null || isNaN(wallet_balance)) {
@@ -135,7 +134,11 @@ router.put("/wallet", async (req, res) => {
     }
 
     // สร้างคำสั่ง SQL เพื่อเพิ่มค่า wallet_balance ที่รับมา ไปยังค่าเดิมในฐานข้อมูล
-    let sql = "UPDATE members SET wallet_balance = wallet_balance + ? WHERE member_id = ?";
+    let sql = `
+      UPDATE members 
+      SET wallet_balance = wallet_balance + ? 
+      WHERE member_id = ?;
+    `;
 
     sql = mysql.format(sql, [wallet_balance, member_id]);
 
@@ -153,14 +156,19 @@ router.put("/wallet", async (req, res) => {
         return res.status(404).json({ message: "Member not found." });
       }
 
-      // ส่งสถานะตอบกลับเมื่อการอัพเดตสำเร็จ
-      res.status(200).json({
-        message: "Wallet balance updated successfully",
-        affected_rows: result.affectedRows,
+      // ทำการดึงข้อมูล wallet_balance ล่าสุดหลังจากการอัพเดต
+      const selectSql = "SELECT wallet_balance FROM members WHERE member_id = ?";
+      conn.query(selectSql, [member_id], (selectErr, selectResult) => {
+        if (selectErr) {
+          console.error("Error fetching updated balance:", selectErr.message);
+          return res.status(500).json({ message: "Database error", error: selectErr.message });
+        }
+
+        // ส่งยอดเงินล่าสุดโดยตรง
+        res.status(200).send(selectResult[0].wallet_balance.toString()); // ส่งตัวเลขเป็น string
       });
     });
   } catch (error) {
-    // ใช้ Type Assertion เพื่อระบุว่าประเภทของ error คือ Error
     console.error("Error:", (error as Error).message);
     res.status(500).json({
       message: "Internal server error",
@@ -168,6 +176,7 @@ router.put("/wallet", async (req, res) => {
     });
   }
 });
+
 
 
 // ลบ User จาก ID ที่ส่งมา
