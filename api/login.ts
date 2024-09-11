@@ -9,20 +9,27 @@ export const router = express.Router();
 const saltRounds = 10;
 
 // รับ  username or email มา select หาใน DB
-router.get("/:input", (req, res) => {
-  const input = req.params.input; // พารามิเตอร์ input จะเป็นได้ทั้ง email หรือ username
+router.get("/find", (req, res) => {
+  const { input } = req.body; // Use req.body to get the input
 
-  // ปรับ SQL ให้รองรับทั้ง email และ username
+  if (!input) {
+    return res.status(400).json({ message: "Input is required" });
+  }
+
+  // Adjust SQL to support both email and username
   let sql = "SELECT * FROM members WHERE email = ? OR username = ?";
 
   conn.query(sql, [input, input], (err, result) => {
     if (err) {
       res.status(500).json({ error: err.message });
+    } else if (result.length === 0) {
+      res.status(404).json({ message: "Member not found" });
     } else {
       res.json(result);
     }
   });
 });
+
 
 // สมัคร User
 router.post("/", async (req, res) => {
@@ -69,10 +76,10 @@ router.post("/", async (req, res) => {
 });
 
 //แก้ไขข้อมูลผู้ใช้
-router.put("/:member_id", async (req, res) => {
+router.put("/editUser", async (req, res) => {
   try {
-    const member_id = req.params.member_id; // รับค่าจาก URL parameter
-    const member = req.body; // รับข้อมูลสมาชิกจาก request body
+    // const member_id = req.params.member_id; // รับค่าจาก URL parameter
+    const {member,member_id } = req.body; // รับข้อมูลสมาชิกจาก request body
 
     // ตรวจสอบข้อมูลก่อนการอัพเดต
     if (!member.username || !member.email || !member.newpassword) {
@@ -124,10 +131,10 @@ router.put("/:member_id", async (req, res) => {
 });
 
 // เติมเงิน
-router.put("/wallet/:member_id", async (req, res) => {
+router.put("/wallet", async (req, res) => {
   try {
-    const member_id = req.params.member_id; // รับค่าจาก URL parameter
-    const { wallet_balance } = req.body; // รับข้อมูล wallet_balance ที่จะเพิ่มจาก request body
+
+    const { member_id ,wallet_balance } = req.body; // รับข้อมูล wallet_balance ที่จะเพิ่มจาก request body
 
     // ตรวจสอบข้อมูลก่อนการอัพเดต
     if (wallet_balance === undefined || wallet_balance === null || isNaN(wallet_balance)) {
@@ -171,8 +178,12 @@ router.put("/wallet/:member_id", async (req, res) => {
 
 
 // ลบ User จาก ID ที่ส่งมา
-router.delete("/deleteID/:member_id", (req, res) => {
-  const member_id = req.params.member_id;
+router.delete("/deleteID", (req, res) => {
+  const { member_id } = req.body; // Use req.body to get member_id from the request body
+
+  if (!member_id) {
+    return res.status(400).json({ message: "Member ID is required" });
+  }
 
   let sql = "DELETE FROM members WHERE member_id = ?";
   sql = mysql.format(sql, [member_id]);
@@ -187,6 +198,7 @@ router.delete("/deleteID/:member_id", (req, res) => {
     }
   });
 });
+
 
 // ส่วนของ Admin ลบ User ทั้งหมด รีระบบ
 router.delete("/deleteAll", (req, res) => {
