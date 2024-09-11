@@ -10,26 +10,19 @@ const saltRounds = 10;
 
 // รับ  username or email มา select หาใน DB
 router.get("/find", (req, res) => {
-  const { input } = req.body; // Use req.body to get the input
-
-  if (!input) {
-    return res.status(400).json({ message: "Input is required" });
-  }
-
-  // Adjust SQL to support both email and username
+  // const input = req.params.input; // พารามิเตอร์ input จะเป็นได้ทั้ง email หรือ username
+  const {input } = req.body; 
+  // ปรับ SQL ให้รองรับทั้ง email และ username
   let sql = "SELECT * FROM members WHERE email = ? OR username = ?";
 
   conn.query(sql, [input, input], (err, result) => {
     if (err) {
       res.status(500).json({ error: err.message });
-    } else if (result.length === 0) {
-      res.status(404).json({ message: "Member not found" });
     } else {
       res.json(result);
     }
   });
 });
-
 
 // สมัคร User
 router.post("/", async (req, res) => {
