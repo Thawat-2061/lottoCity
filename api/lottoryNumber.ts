@@ -191,7 +191,7 @@ router.get('/insertLotto', async (req, res) => {
   
                       connection.release();
                       // Send the updated wallet balance as a plain number
-                      const updatedBalance = balanceRows[0].wallet_balance;
+                      const updatedBalance = balanceRows[0].wallet_balance.toString();
                       res.status(200).send(`${updatedBalance}`);
                     });
                   });
