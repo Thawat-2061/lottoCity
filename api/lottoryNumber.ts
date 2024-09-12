@@ -86,7 +86,7 @@ router.get('/insertLotto', async (req, res) => {
 
   // ซื้อ หวย เมื่อถูกซื้อ โดยเอา id ของ User มาใส่ใน หวย จ่ายเงินด้วย เงินถูกหัก ถ้าเงินไม่พอซื้อไม่ได้
   router.put('/updateLottoMember', async (req, res) => {
-    const { lotto_number, member_id, wallet_balance } = req.body; // Receive a single lotto_number
+    const { lotto_number, member_id, wallet_balance } = req.body;
   
     if (!lotto_number || !member_id || wallet_balance === undefined) {
       return res.status(400).json({ error: 'lotto_number, member_id, and wallet_balance are required.' });
@@ -160,7 +160,7 @@ router.get('/insertLotto', async (req, res) => {
                   });
                 }
   
-                // Update the members table
+                // Update the members table with the remaining balance
                 const updateMemberSql = "UPDATE members SET wallet_balance = ? WHERE member_id = ?";
                 connection.query(updateMemberSql, [remainingBalance, member_id], (updateMemberErr) => {
                   if (updateMemberErr) {
@@ -170,18 +170,30 @@ router.get('/insertLotto', async (req, res) => {
                     });
                   }
   
-                  // Commit transaction
-                  connection.commit((commitErr) => {
-                    if (commitErr) {
+                  // Retrieve the updated wallet balance from the database
+                  const getBalanceSql = "SELECT wallet_balance FROM members WHERE member_id = ?";
+                  connection.query(getBalanceSql, [member_id], (getBalanceErr, balanceRows) => {
+                    if (getBalanceErr) {
                       return connection.rollback(() => {
                         connection.release();
-                        res.status(500).json({ error: 'Failed to commit transaction.' });
+                        res.status(500).json({ error: 'Failed to retrieve updated balance.' });
                       });
                     }
   
-                    connection.release();
-                    // Return only the remaining wallet balance as a plain number
-                    res.status(200).send(remainingBalance.toString());
+                    // Commit transaction
+                    connection.commit((commitErr) => {
+                      if (commitErr) {
+                        return connection.rollback(() => {
+                          connection.release();
+                          res.status(500).json({ error: 'Failed to commit transaction.' });
+                        });
+                      }
+  
+                      connection.release();
+                      // Send the updated wallet balance as a plain number
+                      const updatedBalance = balanceRows[0].wallet_balance;
+                      res.status(200).send(`${updatedBalance}`);
+                    });
                   });
                 });
               });
@@ -205,6 +217,7 @@ router.get('/insertLotto', async (req, res) => {
       });
     }
   });
+  
   
   
 
