@@ -48,7 +48,7 @@ router.get('/insertLotto', async (req, res) => {
       }
   
       // เตรียมข้อมูลสำหรับการ INSERT
-      const insertValues = Array.from(values).map(lottoNumber => [null, lottoNumber, new Date(), 80]);
+      const insertValues = Array.from(values).map(lottoNumber => [null, lottoNumber, "2024-09-16", 80]);
   
       const sql = "INSERT INTO lottonumbers (member_id, lotto_number, purchase_date, amount) VALUES ?";
   

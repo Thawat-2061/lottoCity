@@ -21,10 +21,32 @@ router.get('/randomlot', async (req, res) => {
         });
     };
 
+    // ฟังก์ชันที่ใช้สำหรับตรวจสอบการมีอยู่ของ rank
+    const checkExistingRanks = (ranks: number[]): Promise<boolean> => {
+        return new Promise((resolve, reject) => {
+            const sql = 'SELECT DISTINCT `rank` FROM lottodraws WHERE `rank` IN (?)';
+            conn.query(sql, [ranks], (err, results: { rank: number }[]) => {
+                if (err) {
+                    return reject(err);
+                }
+                // Check if all ranks exist
+                const existingRanks = results.map(row => row.rank);
+                resolve(ranks.every(rank => existingRanks.includes(rank)));
+            });
+        });
+    };
+
     try {
+        // ตรวจสอบการมีอยู่ของ ranks
+        const exists = await checkExistingRanks(ranks);
+
+        if (exists) {
+            return res.json({ message: 'Ranks 1-5 already exist. No new lotto numbers generated.' });
+        }
+
         const drawDate = new Date(); // กำหนดวันที่และเวลาปัจจุบัน
-        const status = 'pending'; // ตั้งค่า status เป็น 'completed'
-        
+        const status = 'pending'; // ตั้งค่า status เป็น 'pending'
+
         // วนลูปเพื่อสุ่มหมายเลข 5 ครั้ง
         for (let i = 0; i < ranks.length; i++) {
             const [randomNumber] = await getRandomNumbers(1); // สุ่มหมายเลข 1 หมายเลข
@@ -52,6 +74,7 @@ router.get('/randomlot', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
 
 
 
