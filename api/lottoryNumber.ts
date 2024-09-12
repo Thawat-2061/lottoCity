@@ -86,9 +86,9 @@ router.get('/insertLotto', async (req, res) => {
 
   // ซื้อ หวย เมื่อถูกซื้อ โดยเอา id ของ User มาใส่ใน หวย จ่ายเงินด้วย เงินถูกหัก ถ้าเงินไม่พอซื้อไม่ได้
   router.put('/updateLottoMember', async (req, res) => {
-    const { lotto_number_id, member_id, wallet_balance } = req.body; // Receive a single lotto_number_id
+    const { lotto_number, member_id, wallet_balance } = req.body; // Receive a single lotto_number_id
   
-    if (lotto_number_id === undefined || !member_id || wallet_balance === undefined) {
+    if (lotto_number === undefined || !member_id || wallet_balance === undefined) {
       return res.status(400).json({ error: 'lotto_number_id, member_id, and wallet_balance are required.' });
     }
   
@@ -107,7 +107,7 @@ router.get('/insertLotto', async (req, res) => {
           try {
             // Select the amount for the provided lotto_number_id
             const selectSql = "SELECT lotto_number_id, amount, member_id FROM lottonumbers WHERE lotto_number_id = ?";
-            connection.query(selectSql, [lotto_number_id], (selectErr, rows) => {
+            connection.query(selectSql, [lotto_number], (selectErr, rows) => {
               if (selectErr) {
                 return connection.rollback(() => {
                   connection.release();
@@ -118,7 +118,7 @@ router.get('/insertLotto', async (req, res) => {
               if (rows.length === 0) {
                 return connection.rollback(() => {
                   connection.release();
-                  res.status(404).json({ message: 'lotto_number_id not found.' });
+                  res.status(404).json({ message: 'lotto_number not found.' });
                 });
               }
   
@@ -144,7 +144,7 @@ router.get('/insertLotto', async (req, res) => {
   
               // Update lottonumbers for the single ID
               const updateLottoSql = "UPDATE lottonumbers SET member_id = ? WHERE lotto_number_id = ? AND member_id IS NULL";
-              connection.query(updateLottoSql, [member_id, lotto_number_id], (updateLottoErr, updateLottoResult) => {
+              connection.query(updateLottoSql, [member_id, lotto_number], (updateLottoErr, updateLottoResult) => {
                 if (updateLottoErr) {
                   return connection.rollback(() => {
                     connection.release();
