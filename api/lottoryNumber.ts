@@ -180,10 +180,8 @@ router.get('/insertLotto', async (req, res) => {
                     }
   
                     connection.release();
-                    res.status(200).json({
-                      message: 'Member ID updated successfully for the given lotto_number and wallet balance updated.',
-                      remaining_balance: remainingBalance,
-                    });
+                    // Return only the remaining wallet balance as a plain number
+                    res.status(200).send(remainingBalance.toString());
                   });
                 });
               });
@@ -207,6 +205,7 @@ router.get('/insertLotto', async (req, res) => {
       });
     }
   });
+  
   
 
   

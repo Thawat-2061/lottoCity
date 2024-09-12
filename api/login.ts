@@ -8,6 +8,22 @@ export const router = express.Router();
 
 const saltRounds = 10;
 
+router.get("/Alluser", (req, res) => {
+  // Define the SQL query to select all members with type 'user'
+  let sql = "SELECT * FROM members WHERE type = 'user'";
+
+  // Execute the SQL query
+  conn.query(sql, (err, result) => {
+    if (err) {
+      // Send a 500 status code and the error message if there is an error
+      res.status(500).json({ error: err.message });
+    } else {
+      // Send the result as JSON if the query is successful
+      res.json(result);
+    }
+  });
+});
+
 // รับ  username or email มา select หาใน DB
 router.post("/find", (req, res) => {
   // const input = req.params.input; // พารามิเตอร์ input จะเป็นได้ทั้ง email หรือ username
