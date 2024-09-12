@@ -86,10 +86,10 @@ router.get('/insertLotto', async (req, res) => {
 
   // ซื้อ หวย เมื่อถูกซื้อ โดยเอา id ของ User มาใส่ใน หวย จ่ายเงินด้วย เงินถูกหัก ถ้าเงินไม่พอซื้อไม่ได้
   router.put('/updateLottoMember', async (req, res) => {
-    const { lotto_number, member_id, wallet_balance } = req.body; // Receive a single lotto_number_id
+    const { lotto_number, member_id, wallet_balance } = req.body; // Receive a single lotto_number
   
-    if (lotto_number === undefined || !member_id || wallet_balance === undefined) {
-      return res.status(400).json({ error: 'lotto_number_id, member_id, and wallet_balance are required.' });
+    if (!lotto_number || !member_id || wallet_balance === undefined) {
+      return res.status(400).json({ error: 'lotto_number, member_id, and wallet_balance are required.' });
     }
   
     try {
@@ -105,8 +105,8 @@ router.get('/insertLotto', async (req, res) => {
           }
   
           try {
-            // Select the amount for the provided lotto_number_id
-            const selectSql = "SELECT lotto_number_id, amount, member_id FROM lottonumbers WHERE lotto_number_id = ?";
+            // Select the lotto_number_id and amount for the provided lotto_number
+            const selectSql = "SELECT lotto_number_id, amount, member_id FROM lottonumbers WHERE lotto_number = ?";
             connection.query(selectSql, [lotto_number], (selectErr, rows) => {
               if (selectErr) {
                 return connection.rollback(() => {
@@ -142,9 +142,9 @@ router.get('/insertLotto', async (req, res) => {
               // Calculate the remaining balance
               const remainingBalance = wallet_balance - row.amount;
   
-              // Update lottonumbers for the single ID
+              // Update lottonumbers for the corresponding ID
               const updateLottoSql = "UPDATE lottonumbers SET member_id = ? WHERE lotto_number_id = ? AND member_id IS NULL";
-              connection.query(updateLottoSql, [member_id, lotto_number], (updateLottoErr, updateLottoResult) => {
+              connection.query(updateLottoSql, [member_id, row.lotto_number_id], (updateLottoErr, updateLottoResult) => {
                 if (updateLottoErr) {
                   return connection.rollback(() => {
                     connection.release();
@@ -181,7 +181,7 @@ router.get('/insertLotto', async (req, res) => {
   
                     connection.release();
                     res.status(200).json({
-                      message: 'Member ID updated successfully for the given lotto_number_id and wallet balance updated.',
+                      message: 'Member ID updated successfully for the given lotto_number and wallet balance updated.',
                       remaining_balance: remainingBalance,
                     });
                   });
@@ -207,6 +207,7 @@ router.get('/insertLotto', async (req, res) => {
       });
     }
   });
+  
 
   
   
