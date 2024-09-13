@@ -124,7 +124,7 @@ router.get('/getUserCheckLot', async (req, res) => {
         const sql = `
             SELECT *
             FROM lottodraws 
-            WHERE status = 'pending'
+            WHERE status = 'completed'
             ORDER BY 'rank' ASC
         `;
         
