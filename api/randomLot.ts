@@ -21,51 +21,72 @@ router.get('/randomlot', async (req, res) => {
         });
     };
 
-    // ฟังก์ชันที่ใช้สำหรับตรวจสอบการมีอยู่ของ rank
-    const checkExistingRanks = (ranks: number[]): Promise<boolean> => {
+    // ฟังก์ชันที่ใช้สำหรับตรวจสอบจำนวนหมายเลขที่มีอยู่
+    const checkNumberCount = (): Promise<number> => {
         return new Promise((resolve, reject) => {
-            const sql = 'SELECT DISTINCT `rank` FROM lottodraws WHERE `rank` IN (?)';
-            conn.query(sql, [ranks], (err, results: { rank: number }[]) => {
+            const sql = 'SELECT COUNT(*) AS count FROM lottodraws';
+            conn.query(sql, (err, results: { count: number }[]) => {
                 if (err) {
                     return reject(err);
                 }
-                // Check if all ranks exist
-                const existingRanks = results.map(row => row.rank);
-                resolve(ranks.every(rank => existingRanks.includes(rank)));
+                resolve(results[0].count);
+            });
+        });
+    };
+
+    // ฟังก์ชันที่ใช้สำหรับลบหมายเลขที่มีอยู่
+    const deleteExistingNumbers = (): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            const sql = 'DELETE FROM lottodraws';
+            conn.query(sql, (err) => {
+                if (err) {
+                    return reject(err);
+                }
+                resolve();
             });
         });
     };
 
     try {
-        // ตรวจสอบการมีอยู่ของ ranks
-        const exists = await checkExistingRanks(ranks);
+        // ตรวจสอบจำนวนหมายเลขที่มีอยู่
+        const existingNumberCount = await checkNumberCount();
 
-        if (exists) {
-            return res.json({ message: 'Ranks 1-5 already exist. No new lotto numbers generated.' });
+        // ถ้ามีหมายเลขทั้งหมด 15 หมายเลขแล้ว ไม่ต้องสร้างหมายเลขใหม่
+        if (existingNumberCount >= 15) {
+            return res.json({ message: '15 lotto numbers already exist. No new lotto numbers generated.' });
         }
+
+        // ลบหมายเลขที่มีอยู่ก่อนการสร้างหมายเลขใหม่
+        await deleteExistingNumbers();
 
         const drawDate = new Date(); // กำหนดวันที่และเวลาปัจจุบัน
         const status = 'pending'; // ตั้งค่า status เป็น 'pending'
 
-        // วนลูปเพื่อสุ่มหมายเลข 5 ครั้ง
+        // วนลูปเพื่อสุ่มหมายเลขตามลำดับของ rank
         for (let i = 0; i < ranks.length; i++) {
-            const [randomNumber] = await getRandomNumbers(1); // สุ่มหมายเลข 1 หมายเลข
-            const lottoNumber = randomNumber.lotto_number;
+            const rank = ranks[i];
+            const numberOfNumbers = rank; // จำนวนหมายเลขที่ต้องการสำหรับ rank นี้
 
-            // แทรกข้อมูลลงใน lottodraws
-            const insertSql = `
-                INSERT INTO lottodraws (draw_date, winning_numbers, status, \`rank\`)
-                VALUES (?, ?, ?, ?)
-            `;
-            const insertValues = [drawDate, lottoNumber, status, ranks[i]];
-            await new Promise((resolve, reject) => {
-                conn.query(insertSql, insertValues, (err, result) => {
-                    if (err) {
-                        return reject(err);
-                    }
-                    resolve(result);
+            // สุ่มหมายเลขตามจำนวนที่ต้องการ
+            const randomNumbers = await getRandomNumbers(numberOfNumbers);
+            for (const randomNumber of randomNumbers) {
+                const lottoNumber = randomNumber.lotto_number;
+
+                // แทรกข้อมูลลงใน lottodraws
+                const insertSql = `
+                    INSERT INTO lottodraws (draw_date, winning_numbers, status, \`rank\`)
+                    VALUES (?, ?, ?, ?)
+                `;
+                const insertValues = [drawDate, lottoNumber, status, rank];
+                await new Promise<void>((resolve, reject) => {
+                    conn.query(insertSql, insertValues, (err) => {
+                        if (err) {
+                            return reject(err);
+                        }
+                        resolve();
+                    });
                 });
-            });
+            }
         }
 
         res.json({ message: 'Lotto numbers generated and inserted successfully' });
@@ -74,6 +95,7 @@ router.get('/randomlot', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
 
 router.get('/getwinNumber', async (req, res) => {
     try {
@@ -95,39 +117,24 @@ router.get('/getwinNumber', async (req, res) => {
     }
 });
 
-
-router.get('/checkLotwin', async (req, res) => {
-    
-    const { lotto_number } = req.body; // รับค่า lotto_number จากพารามิเตอร์ของ URL
-
+router.get('/getUserCheckLot', async (req, res) => {
     try {
-        // คำสั่ง SQL สำหรับดึงข้อมูล winning_numbers และ rank จาก lottodraws ที่มีสถานะเป็น 'completed'
+        // SQL query to fetch winning numbers, draw date, and rank where status is 'completed'
         const sql = `
-            SELECT winning_numbers, rank, status 
+            SELECT winning_numbers, draw_date, rank 
             FROM lottodraws 
             WHERE status = 'completed'
+            ORDER BY rank ASC
         `;
-
+        
         conn.query(sql, (err, results) => {
             if (err) {
-                console.error('Error fetching lotto results:', err);
+                console.error('Error fetching winning numbers:', err);
                 return res.status(500).json({ error: 'Internal Server Error' });
             }
-
-            if (results.length === 0) {
-                return res.status(400).json({ message: 'ยังไม่ประกาศรางวัล' });
-            }
-
-            // ตรวจสอบว่า lotto_number ที่ให้มาตรงกับ winning_numbers ที่ถูกประกาศแล้วหรือไม่
-            const winningResult = results.find((row: { winning_numbers: string; }) => row.winning_numbers === lotto_number);
-
-            if (winningResult) {
-                // ถ้าเจอ ให้คืนค่า rank ของหวยที่ตรงกัน
-                return res.json({ rank: winningResult.rank });
-            } else {
-                // ถ้าไม่เจอ หมายเลขที่ให้มาตรงกับรางวัลใด ๆ
-                return res.status(404).json({ message: 'ไม่ถูกรางวัล' });
-            }
+            
+            // Send results back in JSON format
+            res.json(results);
         });
     } catch (error) {
         console.error('Unexpected error:', error);
@@ -137,3 +144,169 @@ router.get('/checkLotwin', async (req, res) => {
 
 
 
+router.post('/checkLotwin', async (req, res) => {
+
+    const { lotto_number } = req.body; // รับค่าหมายเลขล็อตเตอรี่จาก URL parameter
+
+    if (!lotto_number) {
+        return res.status(400).json({ error: 'Lotto number is required.' });
+    }
+
+    try {
+        // SQL Query เพื่อตรวจสอบว่า lotto_number นั้นอยู่ใน winning_numbers และสถานะเป็น 'completed' หรือไม่
+        const sql = `
+            SELECT \`rank\`, status 
+            FROM lottodraws 
+            WHERE FIND_IN_SET(?, winning_numbers) > 0
+        `;
+        
+        conn.query(sql, [lotto_number], (err, results) => {
+            if (err) {
+                console.error('Error checking lotto number:', err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+
+            if (results.length === 0) {
+                // ถ้าไม่มีข้อมูลที่ตรงกัน แสดงว่าไม่ถูกรางวัล
+                return res.status(404).json({ message: 'No prize for this lotto number.' });
+            }
+
+            const result = results[0];
+
+            if (result.status !== 'completed') {
+                // ถ้าสถานะยังไม่เป็น 'completed' ให้รีเทิร์นว่า "ยังไม่ประกาศรางวัล"
+                return res.status(200).json({ message: 'is Not Completed' });
+            }
+
+            // ถ้าถูกรางวัล และสถานะเป็น 'completed' ให้รีเทิร์นอันดับ (rank)
+            res.status(200).json({ rank: result.rank });
+        });
+    } catch (error) {
+        console.error('Unexpected error:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+
+
+
+router.post('/claim-prize', async (req, res) => {
+    const { lotto_number, member_id } = req.body;
+
+    if (!lotto_number || !member_id) {
+        return res.status(400).json({ error: 'Both lotto_number and member_id are required.' });
+    }
+
+    try {
+        // SQL Query to check if the lotto number is a winning number
+        const checkSql = `
+            SELECT \`rank\`, status
+            FROM lottodraws
+            WHERE FIND_IN_SET(?, winning_numbers) > 0
+        `;
+
+        conn.query(checkSql, [lotto_number], (err, results) => {
+            if (err) {
+                console.error('Error checking lotto number:', err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+
+            if (results.length === 0) {
+                return res.status(404).json({ message: 'No prize for this lotto number.' });
+            }
+
+            const result = results[0];
+
+            if (result.status !== 'completed') {
+                return res.status(200).json({ message: 'ยังไม่ประกาศรางวัล' });
+            }
+
+            // Calculate prize amount based on the rank
+            let prizeAmount = 0;
+            switch (result.rank) {
+                case 1:
+                    prizeAmount = 6000000;
+                    break;
+                case 2:
+                    prizeAmount = 200000;
+                    break;
+                case 3:
+                    prizeAmount = 80000;
+                    break;
+                case 4:
+                    prizeAmount = 40000;
+                    break;
+                case 5:
+                    prizeAmount = 20000;
+                    break;
+                default:
+                    return res.status(400).json({ error: 'Invalid rank.' });
+            }
+
+            // Get a connection from the pool
+            conn.getConnection((err, connection) => {
+                if (err) {
+                    console.error('Error getting connection from pool:', err);
+                    return res.status(500).json({ error: 'Failed to get a connection from the pool.' });
+                }
+
+                connection.beginTransaction(async (transactionErr) => {
+                    if (transactionErr) {
+                        console.error('Failed to start transaction:', transactionErr);
+                        connection.release();
+                        return res.status(500).json({ error: 'Failed to start transaction.' });
+                    }
+
+                    try {
+                        // Update wallet_amount in members
+                        const updateWalletSql = 'UPDATE members SET wallet_balance = wallet_balance + ? WHERE member_id = ?';
+                        await new Promise<void>((resolve, reject) => {
+                            connection.query(updateWalletSql, [prizeAmount, member_id], (updateWalletErr) => {
+                                if (updateWalletErr) {
+                                    return reject(updateWalletErr);
+                                }
+                                resolve();
+                            });
+                        });
+
+                        // Delete the lotto number from lottodraws
+                        const deleteSql = 'DELETE FROM lottodraws WHERE FIND_IN_SET(?, winning_numbers) > 0';
+                        await new Promise<void>((resolve, reject) => {
+                            connection.query(deleteSql, [lotto_number], (deleteErr) => {
+                                if (deleteErr) {
+                                    return reject(deleteErr);
+                                }
+                                resolve();
+                            });
+                        });
+
+                        // Commit transaction
+                        connection.commit((commitErr) => {
+                            if (commitErr) {
+                                console.error('Failed to commit transaction:', commitErr);
+                                return connection.rollback(() => {
+                                    connection.release();
+                                    res.status(500).json({ error: 'Failed to commit transaction.' });
+                                });
+                            }
+
+                            connection.release();
+                            res.status(200).json({
+                                message: `Prize of ${prizeAmount} has been added to the wallet.`,
+                            });
+                        });
+                    } catch (error) {
+                        console.error('Error during transaction:', error);
+                        connection.rollback(() => {
+                            connection.release();
+                            res.status(500).json({ error: 'Internal Server Error' });
+                        });
+                    }
+                });
+            });
+        });
+    } catch (error) {
+        console.error('Unexpected error:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
