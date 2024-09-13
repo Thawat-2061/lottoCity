@@ -309,26 +309,26 @@ router.post('/claim-prize', async (req, res) => {
 router.put('/toggle-status', (req, res) => {
     const { status } = req.body;
 
-    if (status !== 'pending' && status !== 'completed') {
-        return res.status(400).json({ error: 'Invalid status provided.' });
+    // Ensure that status is either 'completed' or 'pending'
+    if (status !== 'completed' && status !== 'pending') {
+        return res.status(400).json({ error: 'Invalid status value' });
     }
 
-    // ตั้งค่าหมายเลขสถานะที่ต้องการเปลี่ยนเป็นอีกสถานะหนึ่ง
-    const newStatus = status === 'pending' ? 'completed' : 'pending';
-
+    // SQL query to toggle the status based on the provided value
     const sql = `
         UPDATE lottodraws
         SET status = ?
     `;
 
-    conn.query(sql, [newStatus], (err, results) => {
+    // Execute the query with the provided status
+    conn.query(sql, [status], (err, results) => {
         if (err) {
             console.error('Error toggling statuses:', err);
             return res.status(500).json({ error: 'Internal Server Error' });
         }
 
         res.status(200).json({
-            message: `Status updated to ${newStatus} for ${results.affectedRows} records.`
+            message: `Status toggled for ${results.affectedRows} records.`
         });
     });
 });
