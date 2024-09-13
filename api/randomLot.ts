@@ -307,3 +307,24 @@ router.post('/claim-prize', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+router.put('/toggle-status', (req, res) => {
+    const sql = `
+        UPDATE lottodraws
+        SET status = CASE
+            WHEN status = 'pending' THEN 'completed'
+            ELSE 'pending'
+        END
+    `;
+
+    conn.query(sql, (err, results) => {
+        if (err) {
+            console.error('Error toggling statuses:', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        res.status(200).json({
+            message: `Status toggled for ${results.affectedRows} records.`
+        });
+    });
+});
