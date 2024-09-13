@@ -4,7 +4,7 @@ import { conn } from '../dbconn'; // ควรตรวจสอบว่าม�
 
 export const router = express.Router();
 
-
+// เส้นสุ่ม รางวัล ที่ 1-5  15 ใบ
 router.get('/randomlot', async (req, res) => {
     const ranks = [1, 2, 3, 4, 5]; // รางวัลที่ 1-5
 
@@ -96,7 +96,7 @@ router.get('/randomlot', async (req, res) => {
     }
 });
 
-
+// เส้นของ Admin ดึงข้อมูลหวยมาโชว์ทั้งหมด
 router.get('/getwinNumber', async (req, res) => {
     try {
         // คำสั่ง SQL สำหรับดึงข้อมูล winning_numbers โดยเรียงลำดับตาม rank จากน้อยไปมาก
@@ -117,14 +117,15 @@ router.get('/getwinNumber', async (req, res) => {
     }
 });
 
+// เส้น User ดึงข้อมูล หวยที่ถูกประกาศรางวัลมา โชว์ หน้า checklot
 router.get('/getUserCheckLot', async (req, res) => {
-    try {
+    
         // SQL query to fetch winning numbers, draw date, and rank where status is 'completed'
         const sql = `
-            SELECT winning_numbers, draw_date, rank 
+            SELECT *
             FROM lottodraws 
-            WHERE status = 'completed'
-            ORDER BY rank ASC
+            WHERE status = 'pending'
+            ORDER BY 'rank' ASC
         `;
         
         conn.query(sql, (err, results) => {
@@ -136,14 +137,12 @@ router.get('/getUserCheckLot', async (req, res) => {
             // Send results back in JSON format
             res.json(results);
         });
-    } catch (error) {
-        console.error('Unexpected error:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
+   
 });
 
 
 
+// เส้น เช็ค จากหน้า chechlot ว่าได้รางวัลอะไรไหม
 router.post('/checkLotwin', async (req, res) => {
 
     const { lotto_number } = req.body; // รับค่าหมายเลขล็อตเตอรี่จาก URL parameter
@@ -187,9 +186,7 @@ router.post('/checkLotwin', async (req, res) => {
     }
 });
 
-
-
-
+// เส้น ขึ้นเงินรางวัล
 router.post('/claim-prize', async (req, res) => {
     const { lotto_number, member_id } = req.body;
 
