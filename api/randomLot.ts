@@ -206,11 +206,22 @@ router.post('/claim-prize', async (req, res) => {
                 return res.status(500).json({ error: 'Internal Server Error' });
             }
 
-            if (results.length === 0) {
-                return res.status(404).json({ message: 'No prize for this lotto number.' });
-            }
+            const isWinningNumber = results.length > 0;
+            const result = isWinningNumber ? results[0] : null;
 
-            const result = results[0];
+            if (!isWinningNumber) {
+                // If no prize is found, delete the lotto number from lottonumbers
+                const deleteSql = 'DELETE FROM lottonumbers WHERE lotto_number = ?';
+                conn.query(deleteSql, [lotto_number], (deleteErr) => {
+                    if (deleteErr) {
+                        console.error('Error deleting lotto number:', deleteErr);
+                        return res.status(500).json({ error: 'Internal Server Error' });
+                    }
+
+                    res.status(404).json({ message: 'No prize for this lotto number.' });
+                });
+                return;
+            }
 
             if (result.status !== 'completed') {
                 return res.status(200).json({ message: 'ยังไม่ประกาศรางวัล' });
@@ -264,8 +275,8 @@ router.post('/claim-prize', async (req, res) => {
                             });
                         });
 
-                        // Delete the lotto number from lottodraws
-                        const deleteSql = 'DELETE FROM lottonumbers WHERE FIND_IN_SET(?, winning_number) > 0';
+                        // Delete the lotto number from lottonumbers
+                        const deleteSql = 'DELETE FROM lottonumbers WHERE lotto_number = ?';
                         await new Promise<void>((resolve, reject) => {
                             connection.query(deleteSql, [lotto_number], (deleteErr) => {
                                 if (deleteErr) {
