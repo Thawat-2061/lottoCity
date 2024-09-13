@@ -5,7 +5,7 @@ import { conn } from '../dbconn'; // ควรตรวจสอบว่าม�
 export const router = express.Router();
 
 // ดึงข้อมูล หวย จาก ID ที่ส่งมา
-router.get('/getLottoUser', async (req, res) => {
+router.post('/getLottoUser', async (req, res) => {
     try {
       // ดึง member_id จาก URL parameters
    
