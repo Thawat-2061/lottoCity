@@ -100,7 +100,7 @@ router.get('/randomlot', async (req, res) => {
 router.get('/getwinNumber', async (req, res) => {
     try {
         // คำสั่ง SQL สำหรับดึงข้อมูล winning_numbers โดยเรียงลำดับตาม rank จากน้อยไปมาก
-        const sql = 'SELECT winning_numbers FROM lottodraws ORDER BY `rank` ASC';
+        const sql = 'SELECT winning_numbers ,status FROM lottodraws ORDER BY `rank` ASC';
         
         conn.query(sql, (err, results) => {
             if (err) {
@@ -139,8 +139,6 @@ router.get('/getUserCheckLot', async (req, res) => {
         });
    
 });
-
-
 
 // เส้น เช็ค จากหน้า chechlot ว่าได้รางวัลอะไรไหม
 router.post('/checkLotwin', async (req, res) => {
@@ -267,7 +265,7 @@ router.post('/claim-prize', async (req, res) => {
                         });
 
                         // Delete the lotto number from lottodraws
-                        const deleteSql = 'DELETE FROM lottodraws WHERE FIND_IN_SET(?, winning_numbers) > 0';
+                        const deleteSql = 'DELETE FROM lottonumbers WHERE FIND_IN_SET(?, winning_number) > 0';
                         await new Promise<void>((resolve, reject) => {
                             connection.query(deleteSql, [lotto_number], (deleteErr) => {
                                 if (deleteErr) {
@@ -309,22 +307,28 @@ router.post('/claim-prize', async (req, res) => {
 });
 
 router.put('/toggle-status', (req, res) => {
+    const { status } = req.body;
+
+    if (status !== 'pending' && status !== 'completed') {
+        return res.status(400).json({ error: 'Invalid status provided.' });
+    }
+
+    // ตั้งค่าหมายเลขสถานะที่ต้องการเปลี่ยนเป็นอีกสถานะหนึ่ง
+    const newStatus = status === 'pending' ? 'completed' : 'pending';
+
     const sql = `
         UPDATE lottodraws
-        SET status = CASE
-            WHEN status = 'pending' THEN 'completed'
-            ELSE 'pending'
-        END
+        SET status = ?
     `;
 
-    conn.query(sql, (err, results) => {
+    conn.query(sql, [newStatus], (err, results) => {
         if (err) {
             console.error('Error toggling statuses:', err);
             return res.status(500).json({ error: 'Internal Server Error' });
         }
 
         res.status(200).json({
-            message: `Status toggled for ${results.affectedRows} records.`
+            message: `Status updated to ${newStatus} for ${results.affectedRows} records.`
         });
     });
 });
