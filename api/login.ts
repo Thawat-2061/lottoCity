@@ -220,16 +220,33 @@ router.delete("/deleteID", (req, res) => {
 
 // ส่วนของ Admin ลบ User ทั้งหมด รีระบบ
 router.delete("/deleteAll", (req, res) => {
-  const sql = "DELETE FROM members WHERE type = 'user'";
+// Define the SQL queries to delete records from the specified tables
+let deleteMembersSql = "DELETE FROM members WHERE type = 'user'";
+let deleteLottonumbersSql = "DELETE FROM lottonumbers";
+let deleteLottodrawsSql = "DELETE FROM lottodraws";
 
-  conn.query(sql, (err, result) => {
+// Execute the SQL queries sequentially
+conn.query(deleteMembersSql, (err, result) => {
+  if (err) {
+    return res.status(500).json({ error: err.message });
+  }
+
+  // Proceed to delete from lottonumbers if no error
+  conn.query(deleteLottonumbersSql, (err, result) => {
     if (err) {
-      res.status(500).json({ message: "Internal server error", error: err });
-    } else if (result.affectedRows === 0) {
-      res.status(404).json({ message: "No users found to delete" });
-    } else {
-      res.status(200).json({ message: "All users deleted successfully" });
+      return res.status(500).json({ error: err.message });
     }
+
+    // Proceed to delete from lottodraws if no error
+    conn.query(deleteLottodrawsSql, (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
+      // Send success response if all queries are successful
+      res.json({ message: "All specified records have been deleted successfully." });
+    });
   });
+});
 });
 
