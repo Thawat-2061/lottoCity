@@ -211,15 +211,7 @@ router.post('/claim-prize', async (req, res) => {
 
             if (!isWinningNumber) {
                 // If no prize is found, delete the lotto number from lottonumbers
-                const deleteSql = 'DELETE FROM lottonumbers WHERE lotto_number = ?';
-                conn.query(deleteSql, [lotto_number], (deleteErr) => {
-                    if (deleteErr) {
-                        console.error('Error deleting lotto number:', deleteErr);
-                        return res.status(500).json({ error: 'Internal Server Error' });
-                    }
-
-                    res.status(404).json({ message: 'No prize for this lotto number.' });
-                });
+                res.status(404).json({ message: 'No prize for this lotto number.' });
                 return;
             }
 
