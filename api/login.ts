@@ -54,9 +54,9 @@ router.post("/", async (req, res) => {
     const hashedPassword = await bcrypt.hash(User.password, saltRounds);
     const walletBalance = User.wallet_balance == null ? 80.00 : User.wallet_balance;
 
-    // ตรวจสอบว่าชื่อผู้ใช้มีอยู่แล้วหรือไม่
-    let checkUserSql = "SELECT COUNT(*) AS count FROM `members` WHERE `username` = ?";
-    checkUserSql = mysql.format(checkUserSql, [User.username]);
+    // ตรวจสอบว่าชื่อผู้ใช้หรืออีเมลมีอยู่แล้วหรือไม่
+    let checkUserSql = "SELECT COUNT(*) AS count FROM `members` WHERE `username` = ? OR `email` = ?";
+    checkUserSql = mysql.format(checkUserSql, [User.username, User.email]);
 
     conn.query(checkUserSql, (err, result) => {
       if (err) {
@@ -64,7 +64,7 @@ router.post("/", async (req, res) => {
       }
 
       if (result[0].count > 0) {
-        return res.status(409).json({ error: "Username already exists. Please choose a different username." });
+        return res.status(409).json({ error: "Username or email already exists. Please choose a different username or email." });
       } else {
         // เพิ่มผู้ใช้ใหม่
         let sql =
