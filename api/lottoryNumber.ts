@@ -17,7 +17,8 @@ router.post('/getLottoUser', async (req, res) => {
       }
   
       // สร้างคำสั่ง SQL เพื่อดึงข้อมูลทั้งหมดที่ตรงกับ member_id
-      const sql = "SELECT * FROM lottonumbers WHERE member_id = ?";
+      const sql = "SELECT * FROM lottonumbers WHERE member_id = ? ORDER BY lotto_number_id DESC";
+
   
       // ใช้ Promise เพื่อทำให้โค้ดอ่านง่ายขึ้น
       conn.query(sql, [member_id], (err, result) => {
