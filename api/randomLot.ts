@@ -297,9 +297,7 @@ router.post('/claim-prize', async (req, res) => {
                             }
 
                             connection.release();
-                            res.status(200).json({
-                                message: `Prize of ${prizeAmount} has been added to the wallet.`,
-                            });
+                            res.status(200).json(result.rank); // Return only the rank as a number
                         });
                     } catch (error) {
                         console.error('Error during transaction:', error);
@@ -316,6 +314,8 @@ router.post('/claim-prize', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+
 
 router.put('/toggle-status', (req, res) => {
     const { status } = req.body;
